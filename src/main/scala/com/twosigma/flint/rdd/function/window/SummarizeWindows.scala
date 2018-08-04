@@ -61,14 +61,16 @@ object SummarizeWindows {
         // the window whereas a normal Summarizer will recompute a new window from a zero state.
         case _: Summarizer[V, U, V2] =>
           overlappedRdd.mapPartitionsWithIndexOverlapped(
-            (partitionIndex, iterator) =>
+            (partitionIndex, iterator) => {
+              // @xiangdebug
+              println(s"--- [Thread-${Thread.currentThread().getId}] [Partition-$partitionIndex] ${splits(partitionIndex).range}")
               new WindowIterator(
                 iterator.buffered,
                 splits(partitionIndex).range,
                 windowFn,
                 summarizer,
                 skFn
-              )
+              )}
           ).nonOverlapped()
       }
     } else {
