@@ -223,9 +223,14 @@ class AccumulateSummarizerSpec extends TimeSeriesSuite {
 
     //ts.toDF.show()
 
-    val window = Windows.pastAbsoluteTime("1000ns")
+    val window = Windows.pastAbsoluteTime("100ns")
     //ts.summarizeWindows(window, Summarizers.count()).toDF.show()
-    ts.summarizeWindows(window, AccumulateSummarizerSpec.SummarizerFactory()).toDF.show()
+
+    val summarizedTs = ts.summarizeWindows(window, AccumulateSummarizerSpec.SummarizerFactory())
+    summarizedTs.cache()
+
+    println(summarizedTs.count())
+    summarizedTs.toDF.show()
   }
 
 }
