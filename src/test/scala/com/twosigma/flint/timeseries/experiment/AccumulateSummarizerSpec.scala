@@ -233,4 +233,107 @@ class AccumulateSummarizerSpec extends TimeSeriesSuite {
     summarizedTs.toDF.show()
   }
 
+  "Summarizer" should "work on interval level with very simple data" in {
+    val schema = Schema("time" -> LongType, "snapshot" -> LongType, "delta" -> LongType)
+    val defaultNumPartitions = 3
+
+    val data = Array[(Long, Row)](
+      (1000L, new ExternalRow(Array(1000L, null, 1L), schema)),
+      (1010L, new ExternalRow(Array(1010L, null, 1L), schema)),
+      (1050L, new ExternalRow(Array(1050L, 8L, null), schema)),
+      (1100L, new ExternalRow(Array(1100L, null, 1L), schema)),
+      (1200L, new ExternalRow(Array(1200L, null, 1L), schema)),
+      (1250L, new ExternalRow(Array(1250L, null, 1L), schema)),
+      (1350L, new ExternalRow(Array(1350L, 11L, null), schema)),
+      (1550L, new ExternalRow(Array(1550L, null, 1L), schema))
+    )
+
+    val ts = TimeSeriesRDD.fromOrderedRDD(
+      OrderedRDD.fromRDD(sc.parallelize(data, defaultNumPartitions), KeyPartitioningType.Sorted),
+      schema
+    )
+    ts.cache()
+    ts.count()
+    ts.toDF.show()
+
+    val clockSchema = Schema("time" -> LongType)
+    val clockData = Array[(Long, Row)](
+      (1000L, new ExternalRow(Array(1000L), clockSchema)),
+      (1100L, new ExternalRow(Array(1100L), clockSchema)),
+      (1200L, new ExternalRow(Array(1200L), clockSchema)),
+      (1500L, new ExternalRow(Array(1500L), clockSchema)),
+      (1600L, new ExternalRow(Array(1600L), clockSchema))
+    )
+    val clockTs = TimeSeriesRDD.fromOrderedRDD(
+      OrderedRDD.fromRDD(sc.parallelize(clockData, defaultNumPartitions), KeyPartitioningType.Sorted),
+      clockSchema
+    )
+    clockTs.cache()
+    clockTs.count()
+    clockTs.toDF.show()
+
+    val summarizedTs = ts.summarizeIntervals(clockTs, AccumulateSummarizerSpec.SummarizerFactory(), inclusion = "end")
+    summarizedTs.cache()
+    summarizedTs.count()
+    summarizedTs.toDF.show()
+  }
+
+  "Summarizer" should "work on merge with very simple data" in {
+    val schema = Schema("time" -> LongType, "snapshot" -> LongType, "delta" -> LongType)
+    val defaultNumPartitions = 3
+
+    val data = Array[(Long, Row)](
+      (1000L, new ExternalRow(Array(1000L, null, 1L), schema)),
+      (1010L, new ExternalRow(Array(1010L, null, 1L), schema)),
+      (1050L, new ExternalRow(Array(1050L, 8L, null), schema)),
+      (1100L, new ExternalRow(Array(1100L, null, 1L), schema)),
+      (1200L, new ExternalRow(Array(1200L, null, 1L), schema)),
+      (1250L, new ExternalRow(Array(1250L, null, 1L), schema)),
+      (1350L, new ExternalRow(Array(1350L, 11L, null), schema)),
+      (1550L, new ExternalRow(Array(1550L, null, 1L), schema))
+    )
+
+    val ts = TimeSeriesRDD.fromOrderedRDD(
+      OrderedRDD.fromRDD(sc.parallelize(data, defaultNumPartitions), KeyPartitioningType.Sorted),
+      schema
+    )
+    ts.cache()
+    ts.count()
+    ts.toDF.show()
+
+    val clockSchema = Schema("time" -> LongType)
+    val clockData = Array[(Long, Row)](
+      (1000L, new ExternalRow(Array(1000L), clockSchema)),
+      (1100L, new ExternalRow(Array(1100L), clockSchema)),
+      (1200L, new ExternalRow(Array(1200L), clockSchema)),
+      (1500L, new ExternalRow(Array(1500L), clockSchema)),
+      (1600L, new ExternalRow(Array(1600L), clockSchema))
+    )
+    val clockTs = TimeSeriesRDD.fromOrderedRDD(
+      OrderedRDD.fromRDD(sc.parallelize(clockData, defaultNumPartitions), KeyPartitioningType.Sorted),
+      clockSchema
+    )
+    clockTs.cache()
+    clockTs.count()
+    clockTs.toDF.show()
+
+    val clockTsExt = clockTs.addColumns(
+      "snapshot" -> LongType -> {row => null},
+      "delta" -> LongType -> {row => null}
+    )
+    clockTsExt.cache()
+    clockTsExt.count()
+    clockTsExt.toDF.show()
+
+    val mergedTs = ts.merge(clockTsExt)
+    mergedTs.cache()
+    mergedTs.count()
+    mergedTs.toDF.show()
+
+//    val summarizedTs = ts.summarizeIntervals(clockTs, AccumulateSummarizerSpec.SummarizerFactory(), inclusion = "end")
+//    summarizedTs.cache()
+//    summarizedTs.count()
+//    summarizedTs.toDF.show()
+  }
+
 }
